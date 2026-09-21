@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -10,8 +11,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from engine_doc.analysis.dependencies import analyze_dependencies
-from engine_doc.cli import analyze
+from engine_doc.cli import _relative_output_paths, analyze
 from engine_doc.discovery import discover_projects
+from engine_doc.models import PBIPProject
 from engine_doc.parsers import parse_report, parse_semantic_model
 
 
@@ -69,9 +71,58 @@ class EngineDocTests(unittest.TestCase):
             self.assertTrue((output / "index.html").exists())
             self.assertTrue((project_output / "README.md").exists())
             self.assertTrue((project_output / "lineage.mmd").exists())
+            ray_x = project_output / "Sales_raio_x.txt"
+            self.assertTrue(ray_x.exists())
+            ray_x_text = ray_x.read_text(encoding="utf-8")
+            self.assertIn("RAIO-X TÉCNICO DO PROJETO", ray_x_text)
+            self.assertIn("MEDIDAS", ray_x_text)
+            self.assertIn("Total Sales", ray_x_text)
             metadata = json.loads((project_output / "metadata.json").read_text(encoding="utf-8"))
             self.assertEqual("Sales", metadata["name"])
             self.assertEqual(2, len(metadata["model"]["tables"]))
+
+    def test_mirrors_multiple_input_folders_without_name_conflicts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_dir = root / "input"
+            output_dir = root / "output"
+            shutil.copytree(self.fixtures, input_dir / "projeto1")
+            shutil.copytree(self.fixtures, input_dir / "projeto2")
+
+            count = analyze(input_dir, output_dir)
+
+            self.assertEqual(2, count)
+            first = output_dir / "projeto1" / "Sales_raio_x.txt"
+            second = output_dir / "projeto2" / "Sales_raio_x.txt"
+            self.assertTrue(first.is_file())
+            self.assertTrue(second.is_file())
+            self.assertIn("Projeto: Sales", first.read_text(encoding="utf-8"))
+            self.assertIn("Projeto: Sales", second.read_text(encoding="utf-8"))
+            self.assertFalse((output_dir / "Sales").exists())
+
+    def test_disambiguates_multiple_descriptors_in_same_container(self) -> None:
+        input_dir = Path("input").resolve()
+        shared_root = input_dir / "cliente"
+        projects = [
+            PBIPProject(name="Financeiro", root=shared_root),
+            PBIPProject(name="Comercial", root=shared_root),
+        ]
+        self.assertEqual(
+            [Path("cliente/Financeiro"), Path("cliente/Comercial")],
+            _relative_output_paths(projects, input_dir),
+        )
+
+    def test_normalized_names_can_never_overwrite_each_other(self) -> None:
+        input_dir = Path("input").resolve()
+        shared_root = input_dir / "cliente"
+        projects = [
+            PBIPProject(name="Modelo A", root=shared_root),
+            PBIPProject(name="Modelo_A", root=shared_root),
+        ]
+        self.assertEqual(
+            [Path("cliente/Modelo_A"), Path("cliente/Modelo_A_2")],
+            _relative_output_paths(projects, input_dir),
+        )
 
 
 if __name__ == "__main__":

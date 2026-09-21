@@ -1,0 +1,16 @@
+relationship rel_vendas_produtos
+    fromColumn: Vendas.ProdutoId
+    toColumn: Produtos.ProdutoId
+    fromCardinality: many
+    toCardinality: one
+    crossFilteringBehavior: oneDirection
+    isActive: true
+
+relationship rel_vendas_calendario
+    fromColumn: Vendas.Data
+    toColumn: Calendario.Data
+    fromCardinality: many
+    toCardinality: one
+    crossFilteringBehavior: oneDirection
+    isActive: true
+

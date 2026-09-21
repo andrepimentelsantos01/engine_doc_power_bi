@@ -1,0 +1,22 @@
+table Calendario
+    description: Tabela de datas utilizada nos filtros temporais
+
+    column Data
+        dataType: dateTime
+        formatString: dd/MM/yyyy
+        sourceColumn: Data
+
+    column Ano
+        dataType: int64
+        formatString: 0
+        sourceColumn: Ano
+
+    column Mes
+        dataType: string
+        sourceColumn: Mes
+
+    partition Calendario = m
+        mode: import
+        sourceType: m
+        expression: let Fonte = #table({"Data", "Ano", "Mes"}, {{#date(2026, 1, 1), 2026, "Janeiro"}}) in Fonte
+

@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "artifacts": [
+    {
+      "report": {
+        "path": "VendasDemo.Report"
+      }
+    },
+    {
+      "semanticModel": {
+        "path": "VendasDemo.SemanticModel"
+      }
+    }
+  ],
+  "settings": {
+    "enableAutoRecovery": true
+  }
+}
+

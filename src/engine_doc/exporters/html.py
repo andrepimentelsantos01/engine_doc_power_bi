@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from ..models import PBIPProject
+from .text import safe_filename
 
 
 def _project_card(project: PBIPProject, relative_path: str) -> str:
@@ -16,6 +17,7 @@ def _project_card(project: PBIPProject, relative_path: str) -> str:
     pages = len(project.report.pages) if project.report else 0
     name = html.escape(project.name)
     href = html.escape(relative_path.replace("\\", "/"))
+    stem = safe_filename(project.name)
     return f"""
     <article class="card">
       <div><span class="status"></span> DOCUMENTED</div>
@@ -25,9 +27,9 @@ def _project_card(project: PBIPProject, relative_path: str) -> str:
         <span><b>{measures}</b> measures</span><span><b>{pages}</b> pages</span>
       </div>
       <div class="links">
-        <a href="{href}/README.md">Documentation</a>
+        <a href="{href}/{stem}_raio_x.txt">Raio-X TXT</a>
+        <a href="{href}/README.md">Markdown</a>
         <a href="{href}/metadata.json">JSON</a>
-        <a href="{href}/lineage.mmd">Lineage</a>
       </div>
     </article>"""
 

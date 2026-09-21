@@ -1,0 +1,29 @@
+PROJETO PBIP SIMULADO
+=====================
+
+Este projeto existe somente para testar o Engine Doc Power BI sem precisar
+ter o Power BI Desktop instalado.
+
+Ele contém:
+
+- 3 tabelas: Calendario, Produtos e Vendas;
+- 10 colunas físicas;
+- 1 coluna calculada;
+- 4 medidas DAX;
+- 2 relacionamentos;
+- 2 páginas de relatório;
+- 3 visuais simulados;
+- dependências entre medidas e colunas.
+
+Para testar o fluxo completo com a NVIDIA NIM, execute na raiz do projeto:
+
+.\start
+
+Para gerar apenas o raio-X local, execute:
+
+.\local
+
+Resultado esperado:
+
+output\projeto-exemplo\VendasDemo_raio_x.txt
+output\projeto-exemplo\VendasDemo_raio_x_analise_ia.txt

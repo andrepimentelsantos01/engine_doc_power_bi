@@ -1,0 +1,47 @@
+table Vendas
+    description: Fatos de vendas utilizados no relatório de demonstração
+
+    column Data
+        dataType: dateTime
+        formatString: dd/MM/yyyy
+        sourceColumn: Data
+
+    column ProdutoId
+        dataType: int64
+        sourceColumn: ProdutoId
+
+    column Quantidade
+        dataType: int64
+        formatString: 0
+        sourceColumn: Quantidade
+
+    column 'Preco Unitario'
+        dataType: double
+        formatString: R$ #,0.00
+        sourceColumn: PrecoUnitario
+
+    column 'Valor da Linha' = Vendas[Quantidade] * Vendas[Preco Unitario]
+        dataType: double
+        formatString: R$ #,0.00
+
+    measure 'Faturamento Total' = SUMX(Vendas, Vendas[Quantidade] * Vendas[Preco Unitario])
+        formatString: R$ #,0.00
+        displayFolder: Indicadores Financeiros
+
+    measure 'Quantidade Vendida' = SUM(Vendas[Quantidade])
+        formatString: #,0
+        displayFolder: Indicadores Operacionais
+
+    measure 'Quantidade de Vendas' = COUNTROWS(Vendas)
+        formatString: #,0
+        displayFolder: Indicadores Operacionais
+
+    measure 'Ticket Medio' = DIVIDE([Faturamento Total], [Quantidade de Vendas])
+        formatString: R$ #,0.00
+        displayFolder: Indicadores Financeiros
+
+    partition Vendas = m
+        mode: import
+        sourceType: m
+        expression: let Fonte = #table({"Data", "ProdutoId", "Quantidade", "PrecoUnitario"}, {{#date(2026, 1, 1), 1, 2, 3500.0}, {#date(2026, 1, 2), 2, 5, 850.0}}) in Fonte
+

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from ..analysis.lineage import build_mermaid
 from ..models import PBIPProject, Table
+from .text import export_ray_x
 
 
 def _safe_name(value: str) -> str:
@@ -199,8 +200,13 @@ def _dependencies(project: PBIPProject) -> str:
     return "\n".join(lines)
 
 
-def export_project(project: PBIPProject, output_root: Path) -> Path:
-    target = output_root / _safe_name(project.name)
+def export_project(
+    project: PBIPProject,
+    output_root: Path,
+    relative_output: Path | None = None,
+) -> Path:
+    """Export one project, optionally mirroring its folder below ``output_root``."""
+    target = output_root / (relative_output or Path(_safe_name(project.name)))
     if target.exists():
         shutil.rmtree(target)
     tables_dir = target / "tables"
@@ -213,6 +219,7 @@ def export_project(project: PBIPProject, output_root: Path) -> Path:
     (target / "metadata.json").write_text(
         json.dumps(project.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    export_ray_x(project, target)
     if project.model:
         for table in project.model.tables:
             (tables_dir / f"{_safe_name(table.name)}.md").write_text(

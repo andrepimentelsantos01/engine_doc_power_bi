@@ -1,8 +1,23 @@
+param(
+    [switch]$SkipAI
+)
+
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $FixedPort = 8765
 
 Set-Location -LiteralPath $ProjectRoot
+
+$EngineArguments = @(
+    "main.py",
+    "--input", "input",
+    "--output", "output",
+    "--serve",
+    "--port", $FixedPort
+)
+if ($SkipAI) {
+    $EngineArguments += "--skip-ai"
+}
 
 $PortProcesses = @(
     & "$env:SystemRoot\System32\netstat.exe" -ano -p TCP |
@@ -25,13 +40,23 @@ foreach ($PortProcessId in $PortProcesses) {
 
 $Python = Get-Command python -ErrorAction SilentlyContinue
 if ($Python) {
-    & $Python.Source main.py --input input --output output --serve --port $FixedPort
+    & $Python.Source -c "import requests" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[setup] Installing runtime dependencies..."
+        & $Python.Source -m pip install -r requirements.txt
+    }
+    & $Python.Source @EngineArguments
     exit $LASTEXITCODE
 }
 
 $PythonLauncher = Get-Command py -ErrorAction SilentlyContinue
 if ($PythonLauncher) {
-    & $PythonLauncher.Source -3 main.py --input input --output output --serve --port $FixedPort
+    & $PythonLauncher.Source -3 -c "import requests" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[setup] Installing runtime dependencies..."
+        & $PythonLauncher.Source -3 -m pip install -r requirements.txt
+    }
+    & $PythonLauncher.Source -3 @EngineArguments
     exit $LASTEXITCODE
 }
 
