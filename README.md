@@ -2,7 +2,7 @@
 
 # Engine Doc Power BI
 
-Engine Doc Power BI é uma ferramenta CLI em Python para analisar projetos
+Engine Doc Power BI é uma ferramenta local em Python para analisar projetos
 Power BI no formato PBIP.
 
 Ela lê os artefatos locais do projeto e gera um raio-X técnico em TXT. A
@@ -100,8 +100,9 @@ python main.py --input C:\caminho\pbip --output C:\caminho\documentacao --skip-a
 ### Atalhos no Windows
 
 ```powershell
-.\start   # análise, IA opcional e prévia em http://127.0.0.1:8765
-.\local   # análise local, sem IA, com a mesma prévia
+.\start   # CLI: análise, IA opcional e prévia local
+.\local   # CLI: análise local, sem IA
+.\app     # aplicação local: backend + Flutter Web no navegador
 ```
 
 Os atalhos usam a porta fixa `8765`. Se ela estiver ocupada, o processo que a
@@ -210,6 +211,48 @@ e não são gravadas em arquivos, configurações, relatórios ou logs.
 
 Use `--skip-ai` quando nenhuma informação puder sair do computador.
 
+## Interface Flutter Desktop
+
+O mesmo Engine Doc pode ser usado pelo CLI ou pela interface Flutter para
+Windows. O frontend é apenas a camada de apresentação: parsing PBIP/TMDL,
+análises, exporters, prompts e providers de IA continuam no core Python.
+
+```text
+Flutter Desktop
+      ↓ JSON em 127.0.0.1:8766
+API local Python
+      ↓
+Engine Doc Core → PBIP / Raio-X / IA
+```
+
+Durante o desenvolvimento, inicie os dois processos em terminais separados:
+
+```powershell
+# Terminal 1 — raiz do repositório
+python desktop_backend.py
+
+# Terminal 2 (desenvolvimento)
+cd frontend
+flutter run -d chrome
+```
+
+Na interface, selecione a pasta do projeto pelo Explorer, gere o raio-X e,
+opcionalmente, escolha análise crítica ou documentação por NVIDIA NIM ou
+OpenRouter. Os modelos gratuitos do OpenRouter são consultados pelo backend.
+Os resultados TXT são gravados em `output/` e podem ser abertos pelo app.
+
+A API local escuta somente em `127.0.0.1`. A API Key é enviada apenas na
+requisição da operação de IA, permanece em memória e não é persistida nem
+registrada em logs. Os arquivos PBIP não são enviados aos providers.
+
+Para validar o frontend:
+
+```powershell
+cd frontend
+flutter analyze
+flutter test
+flutter build windows --debug
+```
 ## Limitações
 
 - O parser cobre os formatos PBIP, TMDL e PBIR conhecidos pelo projeto. Novas
