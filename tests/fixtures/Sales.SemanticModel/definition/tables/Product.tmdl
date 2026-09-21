@@ -1,0 +1,9 @@
+table Product
+    column ProductId
+        dataType: int64
+        sourceColumn: ProductId
+
+    column Name
+        dataType: string
+        sourceColumn: Name
+

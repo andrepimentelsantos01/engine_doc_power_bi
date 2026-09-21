@@ -1,0 +1,28 @@
+table Sales
+    column ProductId
+        dataType: int64
+        sourceColumn: ProductId
+
+    column Amount
+        dataType: double
+        sourceColumn: Amount
+
+    column 'Amount With Tax' = Sales[Amount] * 1.2
+        dataType: double
+        formatString: "$"#,0.00
+
+    measure 'Total Sales' = SUM(Sales[Amount])
+        formatString: "$"#,0.00
+
+    measure 'Sales Share' =
+        DIVIDE(
+            [Total Sales],
+            CALCULATE([Total Sales], ALL(Sales))
+        )
+        formatString: 0.0%
+
+    partition Sales = m
+        mode: import
+        sourceType: m
+        expression: let Source = #table({}, {}) in Source
+

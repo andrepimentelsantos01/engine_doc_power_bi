@@ -1,0 +1,8 @@
+relationship rel_sales_product
+    fromColumn: Sales.ProductId
+    toColumn: Product.ProductId
+    fromCardinality: many
+    toCardinality: one
+    crossFilteringBehavior: oneDirection
+    isActive: true
+
