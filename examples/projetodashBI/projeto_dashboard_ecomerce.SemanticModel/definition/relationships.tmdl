@@ -1,0 +1,5 @@
+relationship 1440c275-49ea-4b6a-bbfc-934b41d9cbb0
+	joinOnDateBehavior: datePartOnly
+	fromColumn: 'Dados ecomerce'.month_year
+	toColumn: LocalDateTable_fbe0b0ea-4575-4392-8bef-23d7b694f768.Date
+

@@ -46,11 +46,20 @@ def analyze_dependencies(model: SemanticModel) -> list[Dependency]:
     for table in model.tables:
         for measure in table.measures:
             expressions.append((_measure_id(table.name, measure.name), table.name, measure.expression))
+            dependencies.add(
+                (_measure_id(table.name, measure.name), _table_id(table.name), "measure_member_of")
+            )
         for column in table.columns:
+            dependencies.add(
+                (_column_id(table.name, column.name), _table_id(table.name), "column_member_of")
+            )
             if column.expression:
                 expressions.append((_column_id(table.name, column.name), table.name, column.expression))
         if table.expression:
             expressions.append((_table_id(table.name), table.name, table.expression))
+        for partition in table.partitions:
+            source = f"source:{table.name}/{partition.name}"
+            dependencies.add((_table_id(table.name), source, "table_loaded_from_partition"))
 
     for source, current_table, expression in expressions:
         qualified_spans: list[tuple[int, int]] = []
@@ -89,4 +98,3 @@ def analyze_dependencies(model: SemanticModel) -> list[Dependency]:
         dependencies.add((source, target, "relationship"))
 
     return [Dependency(*item) for item in sorted(dependencies)]
-

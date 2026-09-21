@@ -5,6 +5,8 @@ __pycache__/
 .coverage
 .venv/
 venv/
+.env
+*.log
 .idea/
 .vscode/
 .DS_Store
@@ -13,7 +15,5 @@ Thumbs.db
 # PBIP source files and generated documentation may contain sensitive metadata.
 input/*
 !input/.gitkeep
-!input/projeto-exemplo/
-!input/projeto-exemplo/**
 output/*
 !output/.gitkeep

@@ -1,7 +1,56 @@
 {
   "name": "Visual1",
   "visual": {
-    "visualType": "clusteredColumnChart"
+    "visualType": "clusteredColumnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {"SourceRef": {"Entity": "Product"}},
+                  "Property": "Name"
+                }
+              },
+              "queryRef": "Product.Name"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {"SourceRef": {"Entity": "Sales"}},
+                  "Property": "Total Sales"
+                }
+              },
+              "queryRef": "Sales.Total Sales"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {"properties": {"text": {"expr": {"Literal": {"Value": "'Sales by Product'"}}}}}
+      ]
+    }
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "Positive Amount",
+        "type": "Advanced",
+        "field": {
+          "Column": {
+            "Expression": {"SourceRef": {"Entity": "Sales"}},
+            "Property": "Amount"
+          }
+        }
+      }
+    ]
   }
 }
 

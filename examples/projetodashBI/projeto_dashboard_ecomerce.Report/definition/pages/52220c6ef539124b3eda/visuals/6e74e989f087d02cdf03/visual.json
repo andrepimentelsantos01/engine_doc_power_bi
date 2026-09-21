@@ -1,0 +1,203 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.10.0/schema.json",
+  "name": "6e74e989f087d02cdf03",
+  "position": {
+    "x": 425,
+    "y": 520,
+    "z": 7000,
+    "height": 153,
+    "width": 513,
+    "tabOrder": 7000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dados ecomerce"
+                    }
+                  },
+                  "Property": "product_category"
+                }
+              },
+              "queryRef": "Dados ecomerce.product_category",
+              "nativeQueryRef": "product_category"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dados ecomerce"
+                    }
+                  },
+                  "Property": "gross_revenue"
+                }
+              },
+              "queryRef": "Sum(Dados ecomerce.gross_revenue)",
+              "nativeQueryRef": "gross_revenue"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dados ecomerce"
+                    }
+                  },
+                  "Property": "payment_method"
+                }
+              },
+              "queryRef": "Dados ecomerce.payment_method",
+              "nativeQueryRef": "payment_method"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dados ecomerce"
+                    }
+                  },
+                  "Property": "discount"
+                }
+              },
+              "queryRef": "Sum(Dados ecomerce.discount)",
+              "nativeQueryRef": "discount"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dados ecomerce"
+                    }
+                  },
+                  "Property": "calculated_revenue"
+                }
+              },
+              "queryRef": "Sum(Dados ecomerce.calculated_revenue)",
+              "nativeQueryRef": "calculated_revenue"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Dados ecomerce"
+                  }
+                },
+                "Property": "discount"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "objects": {
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "102.5D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Sum(Dados ecomerce.gross_revenue)"
+          }
+        }
+      ],
+      "columnHeaders": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "9D"
+                }
+              }
+            },
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "values": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "visualHeader": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "stylePreset": [
+        {
+          "properties": {
+            "name": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Minimal'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

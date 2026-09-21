@@ -19,9 +19,49 @@ from engine_doc.ai.nvidia_client import (
     NvidiaClientError,
     request_review,
 )
-from engine_doc.ai.reviewer import analysis_path, review_ray_x
+from engine_doc.ai.openrouter_client import (
+    OPENROUTER_ENDPOINT,
+    OPENROUTER_MODEL,
+    OpenRouterClientError,
+    list_free_models,
+    request_review as request_openrouter_review,
+)
+from engine_doc.ai.reviewer import ReviewOutputError, analysis_path, review_ray_x
 from engine_doc.cli import run_ai_reviews
 from engine_doc.models import PBIPProject
+
+
+VALID_ANALYSIS = """VISÃO GERAL
+O projeto apresenta um modelo semântico pequeno e organizado. A leitura foi
+realizada somente a partir das informações disponíveis no raio-X técnico.
+
+PONTOS POSITIVOS
+As tabelas e medidas estão documentadas e possuem dependências identificadas.
+Os relacionamentos encontrados seguem a estrutura descrita pelos metadados.
+
+PONTOS QUE MERECEM ATENÇÃO
+Objetos sem consumo final devem ser revisados com o responsável pelo projeto.
+A ausência de uso direto não constitui autorização para removê-los.
+
+PERFORMANCE
+Não existem métricas de execução suficientes para afirmar que o projeto está
+lento. Padrões potencialmente caros devem ser medidos antes de qualquer mudança.
+
+RELACIONAMENTOS
+Não há evidência suficiente para recomendar mudança na direção dos filtros.
+
+RELATÓRIO
+As páginas, os visuais e seus campos foram considerados na análise técnica.
+
+DEPENDÊNCIAS E IMPACTO
+As cadeias apresentadas são baseadas somente nas dependências comprovadas.
+
+PRIORIDADES SUGERIDAS
+REVISAR os objetos sem consumo identificado antes de decidir qualquer remoção.
+
+CONCLUSÃO
+O projeto deve ser validado no Power BI antes de receber alterações estruturais.
+Recomendação produzida com base exclusiva no raio-X fornecido."""
 
 
 class NvidiaClientTests(unittest.TestCase):
@@ -121,7 +161,7 @@ class ReviewerTests(unittest.TestCase):
 
             def client(api_key: str, system: str, user: str) -> str:
                 captured.update(api_key=api_key, system=system, user=user)
-                return "Recomendação produzida"
+                return VALID_ANALYSIS
 
             generated = review_ray_x(ray_x, "segredo", client=client)
 
@@ -148,6 +188,20 @@ class ReviewerTests(unittest.TestCase):
             self.assertEqual(original, ray_x.read_text(encoding="utf-8"))
             self.assertFalse(analysis_path(ray_x).exists())
 
+    def test_invalid_provider_output_is_not_written(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ray_x = Path(temp_dir) / "modelo_raio_x.txt"
+            ray_x.write_text("raio-x válido", encoding="utf-8")
+
+            with self.assertRaisesRegex(ReviewOutputError, "resposta incompleta"):
+                review_ray_x(
+                    ray_x,
+                    "segredo",
+                    client=lambda *_: "All articles reviewed <unk><unk>",
+                )
+
+            self.assertFalse(analysis_path(ray_x).exists())
+
     def test_cli_requests_key_only_after_xray_exists(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             target = Path(temp_dir)
@@ -161,14 +215,18 @@ class ReviewerTests(unittest.TestCase):
                 events.append("key")
                 return "segredo"
 
-            def fake_review(path: Path, key: str) -> Path:
+            def fake_review(path: Path, key: str, **options: object) -> Path:
                 events.append("review")
                 destination = analysis_path(path)
                 destination.write_text("análise", encoding="utf-8")
                 return destination
 
             with patch("engine_doc.cli.review_ray_x", side_effect=fake_review):
-                generated = run_ai_reviews([(project, target)], key_reader=key_reader)
+                generated = run_ai_reviews(
+                    [(project, target)],
+                    key_reader=key_reader,
+                    input_reader=lambda _: "1",
+                )
             self.assertEqual(["key", "review"], events)
             self.assertEqual([analysis_path(ray_x)], generated)
 
@@ -179,10 +237,108 @@ class ReviewerTests(unittest.TestCase):
             ray_x = target / "Projeto_raio_x.txt"
             ray_x.write_text("raio-x pronto", encoding="utf-8")
             with patch("engine_doc.cli.review_ray_x") as review:
-                generated = run_ai_reviews([(project, target)], key_reader=lambda _: "")
+                generated = run_ai_reviews(
+                    [(project, target)],
+                    key_reader=lambda _: "",
+                    input_reader=lambda _: "1",
+                )
             self.assertEqual([], generated)
             review.assert_not_called()
             self.assertEqual("raio-x pronto", ray_x.read_text(encoding="utf-8"))
+
+    def test_no_ai_never_requests_a_key_or_review(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir)
+            project = PBIPProject(name="Projeto", root=target)
+            ray_x = target / "Projeto_raio_x.txt"
+            ray_x.write_text("raio-x pronto", encoding="utf-8")
+            key_reader = Mock()
+            with patch("engine_doc.cli.review_ray_x") as review:
+                generated = run_ai_reviews(
+                    [(project, target)],
+                    key_reader=key_reader,
+                    input_reader=lambda _: "0",
+                )
+            self.assertEqual([], generated)
+            key_reader.assert_not_called()
+            review.assert_not_called()
+
+
+class OpenRouterClientTests(unittest.TestCase):
+    @staticmethod
+    def _model(model_id: str, prompt: str, completion: str) -> dict:
+        return {
+            "id": model_id,
+            "name": model_id,
+            "context_length": 131072,
+            "architecture": {
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+            },
+            "pricing": {
+                "prompt": prompt,
+                "completion": completion,
+                "request": "0",
+            },
+        }
+
+    @patch("engine_doc.ai.openrouter_client.requests.get")
+    def test_catalog_exposes_only_confirmed_free_text_models(self, get: Mock) -> None:
+        response = Mock(status_code=200)
+        response.json.return_value = {
+            "data": [
+                self._model(OPENROUTER_MODEL, "0", "0"),
+                self._model("provider/free-model", "0", "0"),
+                self._model("provider/paid-model", "0.0001", "0"),
+            ]
+        }
+        get.return_value = response
+
+        models = list_free_models("segredo")
+
+        self.assertEqual(
+            {OPENROUTER_MODEL, "provider/free-model"},
+            {model.id for model in models},
+        )
+
+    @patch("engine_doc.ai.openrouter_client.requests.post")
+    @patch("engine_doc.ai.openrouter_client.requests.get")
+    def test_paid_or_unconfirmed_model_never_reaches_post(
+        self, get: Mock, post: Mock
+    ) -> None:
+        response = Mock(status_code=200)
+        response.json.return_value = {
+            "data": [self._model(OPENROUTER_MODEL, "0", "0")]
+        }
+        get.return_value = response
+
+        with self.assertRaisesRegex(OpenRouterClientError, "confirmar"):
+            request_openrouter_review(
+                "segredo", "system", "raio-x", model="provider/paid-model"
+            )
+        post.assert_not_called()
+
+    @patch("engine_doc.ai.openrouter_client.requests.post")
+    @patch("engine_doc.ai.openrouter_client.requests.get")
+    def test_confirmed_free_model_calls_official_chat_endpoint(
+        self, get: Mock, post: Mock
+    ) -> None:
+        catalog = Mock(status_code=200)
+        catalog.json.return_value = {
+            "data": [self._model(OPENROUTER_MODEL, "0", "0")]
+        }
+        get.return_value = catalog
+        completion = Mock(status_code=200)
+        completion.json.return_value = {
+            "choices": [{"message": {"content": "análise"}}]
+        }
+        post.return_value = completion
+
+        result = request_openrouter_review("segredo", "system", "raio-x")
+
+        self.assertEqual("análise", result)
+        self.assertEqual(OPENROUTER_ENDPOINT, post.call_args.args[0])
+        self.assertNotIn("segredo", str(post.call_args.kwargs["json"]))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "projeto_dashboard_ecomerce"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "04f2a9f8-9d71-4738-a4d2-d46ba6f493c5"
+  }
+}

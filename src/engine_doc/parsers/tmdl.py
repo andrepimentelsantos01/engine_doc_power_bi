@@ -175,8 +175,14 @@ def parse_relationships(path: Path) -> list[Relationship]:
     return relationships
 
 
-def parse_tmdl_model(definition_dir: Path, name: str) -> SemanticModel:
+def parse_tmdl_model(
+    definition_dir: Path,
+    name: str,
+    *,
+    warnings: list[str] | None = None,
+) -> SemanticModel:
     model = SemanticModel(name=name)
+    collected_warnings = warnings if warnings is not None else []
     tables_dir = definition_dir / "tables"
     table_files = sorted(tables_dir.glob("*.tmdl")) if tables_dir.exists() else []
     if not table_files:
@@ -186,26 +192,56 @@ def parse_tmdl_model(definition_dir: Path, name: str) -> SemanticModel:
             if path.name.lower() not in {"relationships.tmdl", "model.tmdl", "database.tmdl"}
         ]
     for path in table_files:
-        table = parse_table_file(path)
+        try:
+            table = parse_table_file(path)
+        except OSError:
+            collected_warnings.append(f"Tabela {path.stem} não pôde ser lida.")
+            continue
+        except UnicodeDecodeError:
+            collected_warnings.append(
+                f"Tabela {path.stem} possui codificação não suportada."
+            )
+            continue
         if table:
             model.tables.append(table)
 
     relationships_file = next(iter(definition_dir.rglob("relationships.tmdl")), None)
     if relationships_file:
-        model.relationships = parse_relationships(relationships_file)
+        try:
+            model.relationships = parse_relationships(relationships_file)
+        except OSError:
+            collected_warnings.append("O arquivo de relacionamentos não pôde ser lido.")
+        except UnicodeDecodeError:
+            collected_warnings.append(
+                "O arquivo de relacionamentos possui codificação não suportada."
+            )
 
     model_file = next(iter(definition_dir.rglob("model.tmdl")), None)
     if model_file:
-        text = model_file.read_text(encoding="utf-8-sig")
-        culture = re.search(r"^\s*culture\s*:\s*([^\r\n]+)", text, re.MULTILINE | re.IGNORECASE)
-        if culture:
-            model.culture = unquote(culture.group(1))
+        try:
+            text = model_file.read_text(encoding="utf-8-sig")
+        except (OSError, UnicodeDecodeError):
+            collected_warnings.append("As propriedades gerais do modelo não puderam ser lidas.")
+        else:
+            culture = re.search(
+                r"^\s*culture\s*:\s*([^\r\n]+)",
+                text,
+                re.MULTILINE | re.IGNORECASE,
+            )
+            if culture:
+                model.culture = unquote(culture.group(1))
     database_file = next(iter(definition_dir.rglob("database.tmdl")), None)
     if database_file:
-        text = database_file.read_text(encoding="utf-8-sig")
-        compatibility = re.search(
-            r"^\s*compatibilityLevel\s*:\s*(\d+)", text, re.MULTILINE | re.IGNORECASE
-        )
-        if compatibility:
-            model.compatibility_level = int(compatibility.group(1))
+        try:
+            text = database_file.read_text(encoding="utf-8-sig")
+        except (OSError, UnicodeDecodeError):
+            collected_warnings.append("O nível de compatibilidade não pôde ser lido.")
+        else:
+            compatibility = re.search(
+                r"^\s*compatibilityLevel\s*:\s*(\d+)",
+                text,
+                re.MULTILINE | re.IGNORECASE,
+            )
+            if compatibility:
+                model.compatibility_level = int(compatibility.group(1))
     return model

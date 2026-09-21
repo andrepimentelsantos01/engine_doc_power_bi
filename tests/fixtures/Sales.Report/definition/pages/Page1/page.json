@@ -1,5 +1,18 @@
 {
   "name": "Page1",
-  "displayName": "Executive Overview"
+  "displayName": "Executive Overview",
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "Product filter",
+        "type": "Categorical",
+        "field": {
+          "Column": {
+            "Expression": {"SourceRef": {"Entity": "Product"}},
+            "Property": "ProductId"
+          }
+        }
+      }
+    ]
+  }
 }
-

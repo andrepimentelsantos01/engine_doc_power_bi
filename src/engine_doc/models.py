@@ -68,12 +68,48 @@ class Relationship:
 
 
 @dataclass(slots=True)
+class VisualField:
+    table: str | None
+    name: str
+    kind: str
+    role: str | None = None
+    aggregation: str | None = None
+    query_ref: str | None = None
+    display_name: str | None = None
+    active: bool = True
+    resolution: str = "explicit"
+
+
+@dataclass(slots=True)
+class ReportFilter:
+    name: str
+    scope: str
+    filter_type: str | None = None
+    display_name: str | None = None
+    fields: list[VisualField] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class ReportVisual:
+    name: str
+    visual_type: str
+    title: str | None = None
+    fields: list[VisualField] = field(default_factory=list)
+    filters: list[ReportFilter] = field(default_factory=list)
+    hidden: bool = False
+    position: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
 class ReportPage:
     name: str
     display_name: str
     visual_count: int = 0
     visual_types: list[str] = field(default_factory=list)
     hidden: bool = False
+    order: int | None = None
+    filters: list[ReportFilter] = field(default_factory=list)
+    visuals: list[ReportVisual] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -81,6 +117,7 @@ class Report:
     name: str
     pages: list[ReportPage] = field(default_factory=list)
     theme: str | None = None
+    filters: list[ReportFilter] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -120,4 +157,3 @@ class PBIPProject:
         )
         data["report_path"] = str(self.report_path) if self.report_path else None
         return data
-

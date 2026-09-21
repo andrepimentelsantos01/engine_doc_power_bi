@@ -12,8 +12,18 @@ from getpass import getpass
 from pathlib import Path
 
 from . import __version__
-from .ai import NvidiaClientError, review_ray_x
+from .ai import (
+    NVIDIA_MODEL,
+    OPENROUTER_MODEL,
+    NvidiaClientError,
+    OpenRouterClientError,
+    ReviewOutputError,
+    list_free_models,
+    request_openrouter_review,
+    review_ray_x,
+)
 from .analysis.dependencies import analyze_dependencies
+from .analysis.report_usage import analyze_report_dependencies
 from .discovery import discover_projects
 from .exporters.html import write_index
 from .exporters.markdown import export_project
@@ -64,45 +74,103 @@ def _relative_output_paths(
 
 
 def analyze_projects(input_dir: Path, output_dir: Path) -> list[ExportedProject]:
-    print("=" * 60)
+    print("-" * 60)
     print("ENGINE DOC POWER BI")
-    print("=" * 60)
-    print("\n[1/4] Localizando projeto PBIP...")
+    print("-" * 60)
+    print(f"\nProcurando projetos em {input_dir}...")
     projects = discover_projects(input_dir)
     exported: list[ExportedProject] = []
-    if projects:
-        print(f"[OK] {len(projects)} projeto(s) localizado(s).")
-    print("\n[2/4] Extraindo arquitetura do projeto...")
+    if not projects:
+        write_index(output_dir, exported)
+        print(f"\n[ERRO] Nenhum projeto PBIP foi encontrado em {input_dir}.")
+        print("Coloque um projeto PBIP nessa pasta e execute novamente.")
+        return exported
+
+    print(f"[OK] {len(projects)} projeto(s) encontrado(s).")
     output_paths = _relative_output_paths(projects, input_dir)
     for project, relative_output in zip(projects, output_paths, strict=True):
+        print("\n" + "-" * 60)
+        print(f"Projeto encontrado: {project.name}")
+        print("Analisando projeto...\n")
+
         if project.semantic_model_path:
             try:
-                project.model = parse_semantic_model(project.semantic_model_path, project.name)
+                project.model = parse_semantic_model(
+                    project.semantic_model_path,
+                    project.name,
+                    warnings=project.warnings,
+                )
                 project.dependencies = analyze_dependencies(project.model)
-            except Exception as exc:  # keep partial documentation useful
-                project.warnings.append(f"Semantic model could not be parsed: {exc}")
+            except FileNotFoundError:
+                project.warnings.append(
+                    "A definição do modelo semântico não foi encontrada."
+                )
+            except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+                project.warnings.append(
+                    "O modelo semântico não pôde ser interpretado completamente."
+                )
         else:
-            project.warnings.append("Semantic model folder was not found.")
+            project.warnings.append("Modelo semântico não encontrado.")
+
+        if project.model:
+            table_count = len(project.model.tables)
+            column_count = sum(len(table.columns) for table in project.model.tables)
+            measure_count = sum(len(table.measures) for table in project.model.tables)
+            print("[OK] Modelo semântico")
+            print(f"[OK] Tabelas e colunas: {table_count} tabela(s), {column_count} coluna(s)")
+            print(f"[OK] Medidas DAX: {measure_count}")
+            print(f"[OK] Relacionamentos: {len(project.model.relationships)}")
+        else:
+            print("[AVISO] Modelo semântico não disponível.")
 
         if project.report_path:
             try:
-                project.report = parse_report(project.report_path, project.name)
-            except Exception as exc:  # keep partial documentation useful
-                project.warnings.append(f"Report could not be parsed: {exc}")
+                project.report = parse_report(
+                    project.report_path,
+                    project.name,
+                    warnings=project.warnings,
+                )
+            except FileNotFoundError:
+                project.warnings.append("A definição do relatório não foi encontrada.")
+            except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+                project.warnings.append(
+                    "O relatório não pôde ser interpretado completamente."
+                )
         else:
-            project.warnings.append("Report folder was not found.")
+            project.warnings.append("Relatório não encontrado.")
 
-        print(f"\n[3/4] Gerando raio-X de {project.name}...")
+        if project.report:
+            visual_count = sum(page.visual_count for page in project.report.pages)
+            print(f"[OK] Páginas: {len(project.report.pages)}")
+            print(f"[OK] Visuais: {visual_count}")
+        else:
+            print("[AVISO] Camada de relatório não disponível.")
+
+        if not project.model and not project.report:
+            print("[ERRO] Não há informações suficientes para gerar o raio-X deste projeto.")
+            if project.warnings:
+                print(f"[AVISO] {len(project.warnings)} aviso(s) registrado(s).")
+            continue
+
+        project.dependencies.extend(analyze_report_dependencies(project))
+        print(f"[OK] Dependências: {len(project.dependencies)}")
+
+        print("Gerando raio-X...")
         target = export_project(project, output_dir, relative_output)
         exported.append((project, target))
         generated_ray_x = ray_x_path(target, project.name)
-        print("[OK] Raio-X gerado com sucesso.")
+        print("[OK] Lineage")
+        print("\nRaio-X gerado com sucesso.")
         print(f"Arquivo: {generated_ray_x}")
+        if project.warnings:
+            print(f"\nAnálise concluída com {len(project.warnings)} aviso(s).")
+            print("Consulte a seção AVISOS do raio-X.")
 
     write_index(output_dir, exported)
-    if not projects:
-        print(f"[INFO] Nenhum projeto PBIP encontrado em {input_dir}")
-    print(f"[OK] Índice da documentação: {output_dir / 'index.html'}")
+    if exported:
+        print(f"\n[OK] Índice da documentação: {output_dir / 'index.html'}")
+    else:
+        print("\n[ERRO] Nenhum projeto pôde ser analisado.")
     return exported
 
 
@@ -115,42 +183,129 @@ def run_ai_reviews(
     exported: list[ExportedProject],
     *,
     key_reader: Callable[[str], str] = getpass,
+    input_reader: Callable[[str], str] = input,
 ) -> list[Path]:
-    """Prompt only after all text X-rays exist, then review them safely."""
+    """Choose a provider only after all text X-rays exist, then review safely."""
     ray_x_files = [ray_x_path(target, project.name) for project, target in exported]
     if not ray_x_files or not all(path.is_file() for path in ray_x_files):
         return []
 
-    print("\n" + "=" * 60)
-    print("ANÁLISE INTELIGENTE")
-    print("=" * 60)
-    print(
-        "\nO conteúdo do raio-X será enviado à API NVIDIA NIM para "
-        "realização da análise técnica."
-    )
-    print("Para continuar, informe sua NVIDIA API Key.\n")
+    print("\n" + "-" * 60)
+    print("ANÁLISE COM IA")
+    print("-" * 60)
+    print("[1] NVIDIA NIM")
+    print("[2] OpenRouter")
+    print("[0] Finalizar sem IA")
+
     try:
-        api_key = key_reader("NVIDIA API Key: ").strip()
+        while True:
+            provider_choice = input_reader("\nOpção: ").strip()
+            if provider_choice in {"0", "1", "2"}:
+                break
+            print("[ERRO] Opção inválida. Informe 0, 1 ou 2.")
     except (EOFError, KeyboardInterrupt):
-        print("\n[INFO] Análise por IA cancelada. O raio-X foi preservado.")
+        print("\n[INFO] Análise por IA cancelada. Os raios-X foram preservados.")
+        return []
+
+    if provider_choice == "0":
+        print("[INFO] Finalizado sem análise com IA.")
+        return []
+
+    if provider_choice == "1":
+        provider = "NVIDIA NIM"
+        model = NVIDIA_MODEL
+        print("\nO raio-X será enviado à NVIDIA NIM para análise.")
+        key_prompt = "NVIDIA API Key: "
+        review_client = None
+    else:
+        provider = "OpenRouter"
+        model = OPENROUTER_MODEL
+        print(
+            "\nO raio-X será enviado ao OpenRouter e processado pelo provedor "
+            "do modelo selecionado."
+        )
+        key_prompt = "OpenRouter API Key: "
+
+    print("A chave será usada somente nesta execução e não será salva.\n")
+    try:
+        api_key = key_reader(key_prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        print("\n[INFO] Análise por IA cancelada. Os raios-X foram preservados.")
         return []
     if not api_key:
-        print("[ERRO] A NVIDIA API Key não foi informada. A etapa de IA foi encerrada.")
+        print(f"[ERRO] A API Key do {provider} não foi informada. A etapa de IA foi encerrada.")
         return []
+
+    if provider_choice == "2":
+        try:
+            free_models = list_free_models(api_key)
+        except OpenRouterClientError as exc:
+            print("[AVISO] Não foi possível concluir a análise com IA.")
+            print(f"Causa: {exc}")
+            print("Não foi possível confirmar que este modelo é gratuito no OpenRouter.")
+            print("[INFO] Nenhuma requisição de análise foi realizada.")
+            return []
+
+        confirmed_ids = {available_model.id for available_model in free_models}
+        if OPENROUTER_MODEL not in confirmed_ids:
+            print("[AVISO] Não foi possível concluir a análise com IA.")
+            print("Não foi possível confirmar que este modelo é gratuito no OpenRouter.")
+            print("[INFO] Nenhuma requisição de análise foi realizada.")
+            return []
+
+        selectable_models = [
+            available_model
+            for available_model in free_models
+            if available_model.id != OPENROUTER_MODEL
+        ]
+        print("\nModelos gratuitos disponíveis:")
+        for index, available_model in enumerate(selectable_models, start=1):
+            context = (
+                f"{available_model.context_length:,}".replace(",", ".")
+                if available_model.context_length
+                else "não informado"
+            )
+            print(f"\n[{index}] {available_model.name}")
+            print(f"    Contexto: {context} tokens")
+        print(f"\n[A] Automático — OpenRouter Free Router ({OPENROUTER_MODEL})")
+        try:
+            while True:
+                model_choice = input_reader("\nEscolha [A]: ").strip().upper() or "A"
+                if model_choice == "A":
+                    break
+                if model_choice.isdigit() and 1 <= int(model_choice) <= len(selectable_models):
+                    break
+                print("[ERRO] Selecione um número exibido na lista ou A.")
+        except (EOFError, KeyboardInterrupt):
+            print("\n[INFO] Análise por IA cancelada. Os raios-X foram preservados.")
+            return []
+        if model_choice != "A":
+            model = selectable_models[int(model_choice) - 1].id
+
+        review_client = lambda key, system, user: request_openrouter_review(
+            key, system, user, model=model
+        )
+
+    print(f"\n[INFO] Provedor selecionado: {provider}")
+    print(f"[INFO] Modelo selecionado: {model}")
 
     generated: list[Path] = []
     try:
         for ray_x_file in ray_x_files:
             print("\n[4/4] Analisando projeto com IA...")
             try:
-                destination = review_ray_x(ray_x_file, api_key)
-            except NvidiaClientError as exc:
-                print(f"[ERRO] {exc}")
-                print("[INFO] O raio-X foi preservado. Somente a etapa de IA foi encerrada.")
+                review_options = {"provider": provider, "model": model}
+                if review_client is not None:
+                    review_options["client"] = review_client
+                destination = review_ray_x(ray_x_file, api_key, **review_options)
+            except (NvidiaClientError, OpenRouterClientError, ReviewOutputError) as exc:
+                print("[AVISO] Não foi possível concluir a análise com IA.")
+                print(f"Causa: {exc}")
+                print(f"Raio-X preservado em: {ray_x_file}")
                 return generated
             except OSError:
-                print("[ERRO] Não foi possível gravar a análise produzida pela NVIDIA.")
-                print("[INFO] O raio-X foi preservado. Somente a etapa de IA foi encerrada.")
+                print("[AVISO] Não foi possível gravar a análise produzida pela IA.")
+                print(f"Raio-X preservado em: {ray_x_file}")
                 return generated
             generated.append(destination)
             print("[OK] Análise concluída.")
@@ -202,7 +357,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-ai",
         action="store_true",
-        help="Generate the deterministic X-ray without requesting an NVIDIA review",
+        help="Generate the deterministic X-ray without requesting an AI review",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser
@@ -215,6 +370,8 @@ def main(argv: list[str] | None = None) -> int:
     input_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     exported = analyze_projects(input_dir, output_dir)
+    if not exported:
+        return 1
     if exported and not args.skip_ai:
         run_ai_reviews(exported)
     print("\nEngine Doc Power BI finalizado.")

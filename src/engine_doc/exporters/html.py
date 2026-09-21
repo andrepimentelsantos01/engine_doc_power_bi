@@ -20,11 +20,11 @@ def _project_card(project: PBIPProject, relative_path: str) -> str:
     stem = safe_filename(project.name)
     return f"""
     <article class="card">
-      <div><span class="status"></span> DOCUMENTED</div>
+      <div><span class="status"></span> DOCUMENTADO</div>
       <h2>{name}</h2>
       <div class="stats">
-        <span><b>{len(tables)}</b> tables</span><span><b>{columns}</b> columns</span>
-        <span><b>{measures}</b> measures</span><span><b>{pages}</b> pages</span>
+        <span><b>{len(tables)}</b> tabelas</span><span><b>{columns}</b> colunas</span>
+        <span><b>{measures}</b> medidas</span><span><b>{pages}</b> páginas</span>
       </div>
       <div class="links">
         <a href="{href}/{stem}_raio_x.txt">Raio-X TXT</a>
@@ -42,12 +42,12 @@ def write_index(output_root: Path, projects: list[tuple[PBIPProject, Path]]) -> 
     if not cards:
         cards = """
         <article class="card empty">
-          <h2>No PBIP project found</h2>
-          <p>Place a <code>.pbip</code> project inside <code>input/</code> and run the command again.</p>
+          <h2>Nenhum projeto PBIP encontrado</h2>
+          <p>Coloque um projeto <code>.pbip</code> em <code>input/</code> e execute novamente.</p>
         </article>"""
     payload = json.dumps([project.name for project, _ in projects], ensure_ascii=False)
     document = f"""<!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Engine Doc Power BI</title>
@@ -58,9 +58,9 @@ def write_index(output_root: Path, projects: list[tuple[PBIPProject, Path]]) -> 
   </style>
 </head>
 <body><main>
-  <header><div class="eyebrow">ENGINE DOC POWER BI</div><h1>PBIP, documented.</h1><p>Automatic technical inventory, dependencies, and lineage generated locally from your Power BI project.</p></header>
+  <header><div class="eyebrow">ENGINE DOC POWER BI</div><h1>Raio-X do seu PBIP.</h1><p>Inventário técnico, dependências e lineage gerados localmente a partir do projeto Power BI.</p></header>
   <section class="grid">{cards}</section>
-  <footer>PBIP → automatic analysis → technical documentation</footer>
+  <footer>PBIP → análise automática → documentação técnica</footer>
   <script>window.engineDocProjects={payload};</script>
 </main></body></html>"""
     output_root.mkdir(parents=True, exist_ok=True)

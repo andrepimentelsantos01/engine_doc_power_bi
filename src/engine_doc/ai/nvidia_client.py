@@ -12,10 +12,10 @@ except ModuleNotFoundError:  # extraction must remain usable without the AI depe
 
 NVIDIA_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 NVIDIA_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
-NVIDIA_MAX_TOKENS = 65536
-NVIDIA_REASONING_BUDGET = 16384
-NVIDIA_TEMPERATURE = 0.6
-NVIDIA_TOP_P = 0.95
+NVIDIA_MAX_TOKENS = 16384
+NVIDIA_REASONING_BUDGET = 4096
+NVIDIA_TEMPERATURE = 0.2
+NVIDIA_TOP_P = 0.9
 NVIDIA_TIMEOUT_SECONDS = 180
 
 

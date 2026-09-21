@@ -1,0 +1,49 @@
+{
+  "name": "Visual3",
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {"SourceRef": {"Entity": "Sales"}},
+                  "Property": "Total Sales"
+                }
+              },
+              "queryRef": "Sales.Total Sales"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {"SourceRef": {"Entity": "Product"}},
+                  "Property": "Name"
+                }
+              },
+              "queryRef": "Product.Name"
+            },
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {"SourceRef": {"Entity": "Sales"}},
+                      "Property": "Amount"
+                    }
+                  },
+                  "Function": 0
+                }
+              },
+              "queryRef": "Sum(Sales.Amount)"
+            },
+            {
+              "queryRef": "Unknown.Missing Field"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

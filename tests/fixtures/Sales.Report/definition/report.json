@@ -1,0 +1,20 @@
+{
+  "themeCollection": {
+    "customTheme": {"name": "Engine Doc Test Theme"}
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "Global amount filter",
+        "type": "Advanced",
+        "field": {
+          "Column": {
+            "Expression": {"SourceRef": {"Entity": "Sales"}},
+            "Property": "Amount"
+          }
+        }
+      }
+    ]
+  }
+}
+

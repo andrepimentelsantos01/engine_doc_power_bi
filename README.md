@@ -1,137 +1,210 @@
 # Engine Doc Power BI
 
-**PBIP → análise automática → documentação técnica**
+Engine Doc Power BI é uma ferramenta CLI em Python para analisar projetos
+Power BI no formato PBIP.
 
-Engine Doc Power BI é uma ferramenta CLI open source que lê projetos Power BI no formato PBIP e gera um raio-X técnico local do modelo sem banco, API própria ou interface gráfica. A extração é sempre determinística; opcionalmente, seu TXT final pode receber uma segunda camada de análise pela NVIDIA NIM.
+Ela lê os artefatos locais do projeto e gera um raio-X técnico em TXT. A
+análise principal não precisa de banco, servidor ou inteligência artificial.
 
-## Início rápido
+## O que ele faz
 
-Requisito: Python 3.11 ou mais recente no Windows.
+O Engine Doc transforma a estrutura de um projeto PBIP em documentação técnica
+pesquisável. O resultado mostra como o modelo semântico e o relatório estão
+organizados, quais objetos dependem uns dos outros e o impacto provável de uma
+alteração.
 
-1. Coloque cada projeto PBIP em sua própria pasta dentro de `input/`.
-2. Execute o serviço completo com análise por IA:
+Cada pasta colocada em `input/` é processada separadamente. A estrutura
+equivalente é preservada em `output/`, evitando conflitos entre projetos.
 
-```powershell
-.\start
-```
+## O que é analisado
 
-3. Aguarde a geração do raio-X e, se desejar a revisão por IA, informe sua NVIDIA API Key quando solicitada.
-4. Acesse <http://127.0.0.1:8765>.
+- fontes e partições;
+- tabelas e colunas;
+- colunas calculadas;
+- medidas e expressões DAX;
+- relacionamentos e direção de filtro;
+- dependências entre objetos;
+- páginas e visuais;
+- campos e filtros usados pelos visuais;
+- lineage;
+- análise de impacto;
+- avisos sobre partes que não puderam ser interpretadas.
 
-O comando instala `requests` apenas se necessário, analisa os projetos, solicita a NVIDIA API Key, grava a documentação em `output/` e inicia a prévia local. A porta é fixa em **8765**. Se ela estiver ocupada, o script encerra o processo que a está escutando antes de iniciar o Engine Doc Power BI. Use `Ctrl+C` para parar.
+São aceitos modelos semânticos TMDL e `model.bim`, além de relatórios PBIR e
+relatórios legados em `report.json`.
 
-### Comandos rápidos
-
-```powershell
-.\start   # serviço completo com análise por IA
-.\local   # serviço completo sem IA; nenhuma informação é enviada
-```
-
-O comando anterior `\.\run.cmd` permanece disponível como alias de `\.\start`.
-
-## O que é extraído
-
-- tabelas, colunas físicas e colunas calculadas;
-- medidas, expressões DAX, pastas de exibição e formatos;
-- partições e expressões Power Query/M;
-- relacionamentos, cardinalidade, direção de filtro e estado ativo;
-- dependências entre medidas, colunas e relacionamentos;
-- lineage em Mermaid;
-- páginas, quantidade e tipos de visuais do relatório;
-- nível de compatibilidade, cultura e avisos de leitura.
-
-O leitor suporta definições semânticas TMDL e `model.bim`, além de relatórios PBIR e o formato legado `report.json`.
-
-## Saída
-
-Para cada projeto é criada uma pasta com:
+## Como funciona
 
 ```text
-output/Nome-do-projeto/
-├── Nome-do-projeto_raio_x.txt             # raio-X determinístico completo
-├── Nome-do-projeto_raio_x_analise_ia.txt  # revisão opcional da NVIDIA
-├── README.md                              # visão geral e inventário
-├── dependencies.md                        # dependências e diagrama Mermaid
-├── lineage.mmd                            # fonte Mermaid isolada
-├── metadata.json                          # metadados para automação
-└── tables/                                # documentação detalhada por tabela
+Projeto PBIP
+    ↓
+Engine Doc Power BI
+    ↓
+Raio-X técnico em TXT
+    ↓
+Análise opcional com IA
 ```
 
-Os arquivos de `input/` e `output/` são ignorados pelo Git porque projetos reais podem conter metadados sensíveis.
+## Instalação
 
-### Vários projetos e pastas previsíveis
+Requisitos:
 
-O Engine Doc procura projetos recursivamente e espelha no `output/` a pasta em que cada projeto foi colocado. O nome interno do arquivo `.pbip` não altera esse caminho:
+- Python 3.11 ou mais recente;
+- Windows para os atalhos `start` e `local`.
+
+```powershell
+git clone https://github.com/andrepimentelsantos01/engine_doc_power_bi.git
+cd engine_doc_power_bi
+python -m pip install -r requirements.txt
+```
+
+O projeto possui somente uma dependência de execução: `requests`, usada pelas
+integrações opcionais com IA.
+
+## Uso
+
+Coloque cada projeto em sua própria pasta:
 
 ```text
 input/
-├── projeto1/
-│   ├── RelatorioVendas.pbip
-│   ├── RelatorioVendas.Report/
-│   └── RelatorioVendas.SemanticModel/
-└── projeto2/
-    ├── RelatorioVendas.pbip
-    ├── RelatorioVendas.Report/
-    └── RelatorioVendas.SemanticModel/
-
-output/
-├── projeto1/
-│   ├── RelatorioVendas_raio_x.txt
-│   └── RelatorioVendas_raio_x_analise_ia.txt
-└── projeto2/
-    ├── RelatorioVendas_raio_x.txt
-    └── RelatorioVendas_raio_x_analise_ia.txt
+├── projeto_financeiro/
+│   ├── Financeiro.pbip
+│   ├── Financeiro.Report/
+│   └── Financeiro.SemanticModel/
+└── projeto_comercial/
+    ├── Comercial.pbip
+    ├── Comercial.Report/
+    └── Comercial.SemanticModel/
 ```
 
-Assim, projetos com o mesmo nome interno continuam isolados. Se uma única pasta contiver mais de um descritor `.pbip`, o Engine Doc cria uma subpasta com o nome de cada projeto para impedir sobrescritas.
-
-## Uso somente como CLI
-
-Para gerar os arquivos e solicitar a análise por IA sem manter a prévia local ativa:
+Para gerar o raio-X e escolher se deseja usar IA:
 
 ```powershell
 python main.py
 ```
 
-Para produzir somente o raio-X local e determinístico, sem solicitar chave nem enviar conteúdo externo:
+Para executar somente a análise local:
 
 ```powershell
 python main.py --skip-ai
 ```
 
-Outras opções:
+Para informar outras pastas:
 
 ```powershell
-python main.py --help
-python main.py --input C:\caminho\pbip --output C:\caminho\docs
-python main.py --serve --port 8765
+python main.py --input C:\caminho\pbip --output C:\caminho\documentacao --skip-ai
 ```
 
-Após instalar o pacote com `pip install -e .`, o comando `engine-doc-power-bi` também fica disponível.
+### Atalhos no Windows
 
-## Análise técnica com IA
+```powershell
+.\start   # análise, IA opcional e prévia em http://127.0.0.1:8765
+.\local   # análise local, sem IA, com a mesma prévia
+```
 
-Depois que o Engine Doc Power BI conclui a extração e grava o arquivo `*_raio_x.txt`, ele pode enviar **somente o conteúdo desse TXT** ao modelo `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`, hospedado pela NVIDIA NIM. O PBIP e seus arquivos internos nunca são enviados ou abertos pela camada de IA.
+Os atalhos usam a porta fixa `8765`. Se ela estiver ocupada, o processo que a
+estiver escutando será encerrado antes da inicialização. Use `Ctrl+C` para
+fechar a prévia.
 
-O modelo pode sugerir melhorias relacionadas a:
+## Exemplo
 
-- DAX;
-- relacionamentos e modelagem;
-- performance;
-- dependências;
-- organização e manutenção.
+O repositório inclui o projeto fictício `VendasDemo`. Ele não fica em `input/`
+para evitar processamento automático.
 
-Para utilizar a funcionalidade, é necessário possuir uma NVIDIA API Key. A chave é solicitada diretamente no terminal com entrada oculta, mantida somente em memória durante a execução e não é gravada em arquivos, `.env`, configurações ou logs.
+Execute diretamente:
 
-Antes da solicitação da chave, o terminal informa claramente que o TXT será enviado à NVIDIA. Se a chave estiver vazia, a autenticação falhar, houver limite de requisições, timeout, falha de conexão ou resposta inválida, somente a etapa de IA é encerrada; o raio-X já produzido permanece preservado.
+```powershell
+python main.py --input examples --output output-demo --skip-ai
+```
 
-Importante:
+O raio-X será criado em:
 
-- o conteúdo do TXT representa metadados do projeto e será enviado à API NVIDIA NIM quando a análise for aceita;
-- a análise por IA não substitui validação técnica;
-- nenhuma API Key deve ser adicionada ao código-fonte;
-- o raio-X é produzido independentemente da IA;
-- use `--skip-ai` quando nenhuma informação puder sair do ambiente local.
+```text
+output-demo/vendas_demo/VendasDemo_raio_x.txt
+```
+
+Consulte [examples/vendas_demo/README.md](examples/vendas_demo/README.md) para
+ver o conteúdo e outra forma de execução.
+
+## Saída
+
+Cada projeto recebe uma pasta própria:
+
+```text
+output/projeto_financeiro/
+├── Financeiro_raio_x.txt
+├── Financeiro_raio_x_analise_ia.txt  # somente quando a IA é utilizada
+├── README.md
+├── dependencies.md
+├── lineage.mmd
+├── metadata.json
+└── tables/
+```
+
+Trecho do TXT:
+
+```text
+TABELA: Vendas
+
+MEDIDA: Vendas[Faturamento Total]
+Expressão DAX:
+SUMX(Vendas, Vendas[Quantidade] * Vendas[Preco Unitario])
+
+DEPENDE DE:
+- Coluna: Vendas[Quantidade]
+- Coluna: Vendas[Preco Unitario]
+
+USADA POR / DEPENDÊNCIAS A JUSANTE:
+- Visual: Resumo/GraficoFaturamento
+```
+
+Projetos e documentos gerados podem conter metadados sensíveis. Por isso,
+`input/` e `output/` são ignorados pelo Git.
+
+## Análise com IA
+
+A IA é opcional e só é oferecida depois da criação de todos os raios-X:
+
+```text
+[1] NVIDIA NIM
+[2] OpenRouter
+[0] Finalizar sem IA
+```
+
+Na NVIDIA NIM, o modelo configurado é exibido antes da análise.
+
+No OpenRouter, o catálogo oficial é consultado dinamicamente. Somente modelos
+de texto com preços confirmados como zero são apresentados. A opção automática
+usa `openrouter/free`. A gratuidade é validada novamente antes de cada envio.
+Se ela não puder ser confirmada, nenhuma análise é solicitada.
+
+Uma falha de IA não apaga nem invalida o raio-X local.
+
+## Privacidade
+
+O processamento PBIP é local. Nenhum arquivo é enviado durante a geração do
+raio-X.
+
+Ao escolher IA, somente o conteúdo do TXT é enviado:
+
+- diretamente à NVIDIA NIM; ou
+- ao OpenRouter e ao provedor responsável pelo modelo selecionado.
+
+As API Keys são solicitadas com entrada oculta, permanecem somente em memória
+e não são gravadas em arquivos, configurações, relatórios ou logs.
+
+Use `--skip-ai` quando nenhuma informação puder sair do computador.
+
+## Limitações
+
+- O parser cobre os formatos PBIP, TMDL e PBIR conhecidos pelo projeto. Novas
+  versões do Power BI podem introduzir estruturas ainda não reconhecidas.
+- A análise de dependências DAX é conservadora e baseada em referências
+  explícitas. Expressões dinâmicas podem não aparecer no lineage.
+- Ausência de uso direto em visual não prova que um objeto seja inútil.
+- O projeto de exemplo é uma fixture artificial e não substitui a validação de
+  um projeto salvo pelo Power BI Desktop.
+- A revisão por IA é consultiva e deve ser validada tecnicamente.
 
 ## Testes
 
@@ -139,31 +212,12 @@ Importante:
 python -m unittest discover -s tests -v
 ```
 
-## Limites conhecidos
+Os testes de IA usam mocks e não realizam chamadas reais aos provedores.
 
-A extração de dependências DAX é deliberadamente conservadora e baseada em referências explícitas. Referências dinâmicas, alguns recursos novos do Power BI e expressões que dependem de resolução semântica completa podem não aparecer no lineage. Arquivos inválidos não interrompem os demais projetos: o problema é incluído na seção de avisos.
+## Contribuindo
 
-## Estrutura
-
-```text
-engine_doc_power_bi/
-├── input/
-├── output/
-├── scripts/
-│   └── run.ps1
-├── src/engine_doc/
-│   ├── analysis/
-│   ├── exporters/
-│   ├── parsers/
-│   ├── cli.py
-│   ├── discovery.py
-│   └── models.py
-├── tests/
-├── main.py
-├── run.cmd
-├── pyproject.toml
-└── requirements.txt
-```
+Contribuições são bem-vindas. Antes de enviar uma alteração, execute a suíte de
+testes e não inclua projetos PBIP reais, dados sensíveis ou API Keys.
 
 ## Licença
 

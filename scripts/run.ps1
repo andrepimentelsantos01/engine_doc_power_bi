@@ -33,7 +33,7 @@ $PortProcesses = @(
 
 foreach ($PortProcessId in $PortProcesses) {
     if ($PortProcessId -and $PortProcessId -ne $PID) {
-        Write-Host "[port] Stopping PID $PortProcessId on port $FixedPort..."
+        Write-Host "[porta] Encerrando o processo $PortProcessId na porta $FixedPort..."
         Stop-Process -Id $PortProcessId -Force -ErrorAction Stop
     }
 }
@@ -42,7 +42,7 @@ $Python = Get-Command python -ErrorAction SilentlyContinue
 if ($Python) {
     & $Python.Source -c "import requests" 2>$null
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "[setup] Installing runtime dependencies..."
+        Write-Host "[configuração] Instalando dependências..."
         & $Python.Source -m pip install -r requirements.txt
     }
     & $Python.Source @EngineArguments
@@ -53,11 +53,11 @@ $PythonLauncher = Get-Command py -ErrorAction SilentlyContinue
 if ($PythonLauncher) {
     & $PythonLauncher.Source -3 -c "import requests" 2>$null
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "[setup] Installing runtime dependencies..."
+        Write-Host "[configuração] Instalando dependências..."
         & $PythonLauncher.Source -3 -m pip install -r requirements.txt
     }
     & $PythonLauncher.Source -3 @EngineArguments
     exit $LASTEXITCODE
 }
 
-throw "Python 3 was not found. Install Python 3.11 or newer and run .\run.cmd again."
+throw "Python 3 não foi encontrado. Instale o Python 3.11 ou mais recente e execute .\start novamente."

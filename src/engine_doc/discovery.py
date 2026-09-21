@@ -8,11 +8,15 @@ from pathlib import Path
 from .models import PBIPProject
 
 
-def _load_json(path: Path) -> dict:
+def _load_json(path: Path) -> tuple[dict, str | None]:
     try:
-        return json.loads(path.read_text(encoding="utf-8-sig"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return {}
+        return json.loads(path.read_text(encoding="utf-8-sig")), None
+    except OSError:
+        return {}, f"O descritor PBIP não pôde ser lido: {path.name}."
+    except UnicodeDecodeError:
+        return {}, f"O descritor PBIP não está em uma codificação suportada: {path.name}."
+    except json.JSONDecodeError:
+        return {}, f"O descritor PBIP contém JSON inválido: {path.name}."
 
 
 def _resolve_reference(descriptor: Path, data: dict, key: str) -> Path | None:
@@ -53,7 +57,7 @@ def discover_projects(input_dir: Path) -> list[PBIPProject]:
     claimed: set[Path] = set()
 
     for descriptor in descriptors:
-        data = _load_json(descriptor)
+        data, descriptor_warning = _load_json(descriptor)
         semantic = _resolve_reference(descriptor, data, "semanticModel")
         report = _resolve_reference(descriptor, data, "report")
         base = descriptor.parent
@@ -63,15 +67,16 @@ def discover_projects(input_dir: Path) -> list[PBIPProject]:
             claimed.add(semantic.resolve())
         if report:
             claimed.add(report.resolve())
-        projects.append(
-            PBIPProject(
-                name=descriptor.stem,
-                root=base,
-                descriptor=descriptor,
-                semantic_model_path=semantic,
-                report_path=report,
-            )
+        project = PBIPProject(
+            name=descriptor.stem,
+            root=base,
+            descriptor=descriptor,
+            semantic_model_path=semantic,
+            report_path=report,
         )
+        if descriptor_warning:
+            project.warnings.append(descriptor_warning)
+        projects.append(project)
 
     loose_semantic = sorted(input_dir.rglob("*.SemanticModel"))
     loose_reports = sorted(input_dir.rglob("*.Report"))

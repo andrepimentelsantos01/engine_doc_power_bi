@@ -20,6 +20,11 @@ classifiers = [
 ]
 dependencies = ["requests>=2.31,<3"]
 
+[project.urls]
+Homepage = "https://github.com/andrepimentelsantos01/engine_doc_power_bi"
+Repository = "https://github.com/andrepimentelsantos01/engine_doc_power_bi"
+Issues = "https://github.com/andrepimentelsantos01/engine_doc_power_bi/issues"
+
 [project.scripts]
 engine-doc-power-bi = "engine_doc.cli:main"
 

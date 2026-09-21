@@ -89,11 +89,16 @@ def parse_bim(path: Path, name: str) -> SemanticModel:
     return model
 
 
-def parse_semantic_model(path: Path, name: str | None = None) -> SemanticModel:
+def parse_semantic_model(
+    path: Path,
+    name: str | None = None,
+    *,
+    warnings: list[str] | None = None,
+) -> SemanticModel:
     name = name or path.name.removesuffix(".SemanticModel")
     definition = path / "definition"
     if definition.exists() and any(definition.rglob("*.tmdl")):
-        return parse_tmdl_model(definition, name)
+        return parse_tmdl_model(definition, name, warnings=warnings)
 
     candidates = [path / "model.bim", path / "definition" / "model.bim"]
     candidates.extend(path.rglob("model.bim"))
@@ -101,4 +106,3 @@ def parse_semantic_model(path: Path, name: str | None = None) -> SemanticModel:
         if candidate.exists():
             return parse_bim(candidate, name)
     raise FileNotFoundError(f"No TMDL definition or model.bim found in {path}")
-

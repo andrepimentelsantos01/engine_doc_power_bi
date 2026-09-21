@@ -1,0 +1,263 @@
+table 'Dados ecomerce'
+	lineageTag: 7757bf73-48a2-42d7-953a-31d29a2afede
+
+	measure 'Soma de calculated_discount dividido por Soma de gross_revenue' =
+			
+			DIVIDE(
+				SUM('Dados ecomerce'[calculated_discount]),
+				SUM('Dados ecomerce'[gross_revenue])
+			)
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: fd4e0778-859d-47df-ad9b-e649bb200885
+
+		extendedProperty MeasureTemplate =
+				{
+				  "version": 0,
+				  "daxTemplateName": "MathematicalDivision"
+				}
+
+		changedProperty = FormatString
+
+	column order_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 6ce9cc6b-dcab-426f-8b3f-5a000bd58aef
+		summarizeBy: sum
+		sourceColumn: order_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column order_date
+		dataType: int64
+		formatString: 0
+		lineageTag: 90564653-37a2-4eaa-97ec-23a5c25289c3
+		summarizeBy: sum
+		sourceColumn: order_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 2ab6a534-66cc-4b06-85a2-c981ebebcb2f
+		summarizeBy: sum
+		sourceColumn: customer_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column product_category
+		dataType: string
+		lineageTag: e1541bd3-a771-4161-b5b5-e3c2be0a7588
+		summarizeBy: none
+		sourceColumn: product_category
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		lineageTag: 53cd86c3-e0e6-4934-b149-e40a1e48bc3e
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column quantity
+		dataType: int64
+		formatString: 0
+		lineageTag: b2445a1f-884f-42ec-9c86-c27893d3971a
+		summarizeBy: sum
+		sourceColumn: quantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column unit_price
+		dataType: double
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: a5a0ea2d-277a-4cdf-97a6-baba82280567
+		summarizeBy: sum
+		sourceColumn: unit_price
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	column discount
+		dataType: double
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: b45546aa-d915-4a8c-8166-650bd57abfb5
+		summarizeBy: sum
+		sourceColumn: discount
+
+		annotation SummarizationSetBy = Automatic
+
+	column payment_method
+		dataType: string
+		lineageTag: 3ef0925b-638e-4d8f-ab51-f96cc48b7649
+		summarizeBy: none
+		sourceColumn: payment_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column delivery_days
+		dataType: int64
+		formatString: 0
+		lineageTag: 25a7e571-95d5-4c51-82b0-b0e8c662e607
+		summarizeBy: sum
+		sourceColumn: delivery_days
+
+		annotation SummarizationSetBy = Automatic
+
+	column customer_rating
+		dataType: double
+		lineageTag: 5d01dfb8-ad18-42de-8163-0dc55d9f4a3d
+		summarizeBy: sum
+		sourceColumn: customer_rating
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column revenue
+		dataType: double
+		lineageTag: 3e85b5a4-ddfd-4a89-b3ea-2d7edc8f2f66
+		summarizeBy: sum
+		sourceColumn: revenue
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column calculated_revenue
+		dataType: double
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: fc9bc23b-cc2d-43e8-b3b5-1e1e25b75e98
+		summarizeBy: sum
+		sourceColumn: calculated_revenue
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	column gross_revenue
+		dataType: double
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: 076a1b24-ee3f-44d2-99bf-7bf7a32b6e61
+		summarizeBy: sum
+		sourceColumn: gross_revenue
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	column calculated_discount
+		dataType: double
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: 1b128d5f-76c2-4ca4-94e0-eca706f72b1c
+		summarizeBy: sum
+		sourceColumn: calculated_discount
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	column difference
+		dataType: int64
+		formatString: 0
+		lineageTag: 5695be3c-e055-4905-874e-2d7eee8a1ed2
+		summarizeBy: sum
+		sourceColumn: difference
+
+		annotation SummarizationSetBy = Automatic
+
+	column year
+		dataType: int64
+		formatString: 0
+		lineageTag: a9abeade-8b11-44b0-843a-53ab24a84244
+		summarizeBy: sum
+		sourceColumn: year
+
+		annotation SummarizationSetBy = Automatic
+
+	column month_year
+		dataType: dateTime
+		formatString: mm/yyyy
+		lineageTag: 13b8edd7-9206-4e26-a8cd-682a8925be10
+		summarizeBy: none
+		sourceColumn: month_year
+
+		variation Variation
+			isDefault
+			relationship: 1440c275-49ea-4b6a-bbfc-934b41d9cbb0
+			defaultHierarchy: LocalDateTable_fbe0b0ea-4575-4392-8bef-23d7b694f768.'Hierarquia de datas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+		annotation PBI_FormatHint = {"isCustom":true}
+
+	column month
+		dataType: string
+		lineageTag: d0a406ce-62f2-4dd7-9d25-c50ee1eef923
+		summarizeBy: none
+		sourceColumn: month
+
+		annotation SummarizationSetBy = Automatic
+
+	column quarter
+		dataType: int64
+		formatString: 0
+		lineageTag: 82f2fc52-11ef-46e0-a2be-0bbb2f6bc532
+		summarizeBy: sum
+		sourceColumn: quarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column day_of_week
+		dataType: string
+		lineageTag: bb9a5fa6-ce8b-4cca-8738-99910b1ff135
+		summarizeBy: none
+		sourceColumn: day_of_week
+
+		annotation SummarizationSetBy = Automatic
+
+	column average_item_value
+		dataType: double
+		formatString: "R$"\ #,0.00;-"R$"\ #,0.00;"R$"\ #,0.00
+		lineageTag: 9c7d71d6-d225-4f74-b3bb-34a57dbf2319
+		summarizeBy: sum
+		sourceColumn: average_item_value
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"pt-BR"}
+
+	column rating_goup
+		dataType: string
+		lineageTag: f2194c49-34bd-4e59-9dd7-6eb67adedbd2
+		summarizeBy: none
+		sourceColumn: rating_goup
+
+		annotation SummarizationSetBy = Automatic
+
+	column delivery_status
+		dataType: string
+		lineageTag: 8c2fb73f-e3ed-4ab6-9835-4507ce3008e4
+		summarizeBy: none
+		sourceColumn: delivery_status
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Dados ecomerce' = m
+		mode: import
+		source =
+				let
+				    Fonte = Excel.Workbook(File.Contents("C:\Users\User\Downloads\ecomerce_sheet (1).xlsx"), null, true),
+				    #"Dados ecomerce_Sheet" = Fonte{[Item="Dados ecomerce",Kind="Sheet"]}[Data],
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(#"Dados ecomerce_Sheet", [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"order_id", Int64.Type}, {"order_date", Int64.Type}, {"customer_id", Int64.Type}, {"product_category", type text}, {"region", type text}, {"quantity", Int64.Type}, {"unit_price", type number}, {"discount", type number}, {"payment_method", type text}, {"delivery_days", Int64.Type}, {"customer_rating", type number}, {"revenue", type number}, {"calculated_revenue", type number}, {"gross_revenue", type number}, {"calculated_discount", type number}, {"difference", Int64.Type}, {"year", Int64.Type}, {"month_year", type date}, {"month", type text}, {"quarter", Int64.Type}, {"day_of_week", type text}, {"average_item_value", type number}, {"rating_goup", type text}, {"delivery_status", type text}})
+				in
+				    #"Tipo Alterado"
+
+	annotation PBI_ResultType = Table
+
