@@ -18,6 +18,7 @@ from .ai import (
     NvidiaClientError,
     OpenRouterClientError,
     ReviewOutputError,
+    document_ray_x,
     list_free_models,
     request_openrouter_review,
     review_ray_x,
@@ -185,38 +186,61 @@ def run_ai_reviews(
     key_reader: Callable[[str], str] = getpass,
     input_reader: Callable[[str], str] = input,
 ) -> list[Path]:
-    """Choose a provider only after all text X-rays exist, then review safely."""
+    """Choose an AI output and provider only after all text X-rays exist."""
     ray_x_files = [ray_x_path(target, project.name) for project, target in exported]
     if not ray_x_files or not all(path.is_file() for path in ray_x_files):
         return []
 
-    print("\n" + "-" * 60)
-    print("ANÁLISE COM IA")
-    print("-" * 60)
-    print("[1] NVIDIA NIM")
-    print("[2] OpenRouter")
-    print("[0] Finalizar sem IA")
-
     try:
         while True:
-            provider_choice = input_reader("\nOpção: ").strip()
-            if provider_choice in {"0", "1", "2"}:
-                break
-            print("[ERRO] Opção inválida. Informe 0, 1 ou 2.")
+            print("\n" + "-" * 60)
+            print("INTELIGÊNCIA ARTIFICIAL")
+            print("-" * 60)
+            print("O que deseja gerar?")
+            print("[1] Análise crítica")
+            print("[2] Documentação executiva/técnica")
+            print("[0] Finalizar sem IA")
+            while True:
+                mode_choice = input_reader("\nEscolha: ").strip()
+                if mode_choice in {"0", "1", "2"}:
+                    break
+                print("[ERRO] Opção inválida. Informe 0, 1 ou 2.")
+
+            if mode_choice == "0":
+                print("[INFO] Finalizado sem processamento com IA.")
+                return []
+
+            print("\nEscolha o provedor:")
+            print("[1] NVIDIA NIM")
+            print("[2] OpenRouter")
+            print("[0] Voltar")
+            while True:
+                provider_choice = input_reader("\nEscolha: ").strip()
+                if provider_choice in {"0", "1", "2"}:
+                    break
+                print("[ERRO] Opção inválida. Informe 0, 1 ou 2.")
+            if provider_choice == "0":
+                continue
+            break
     except (EOFError, KeyboardInterrupt):
-        print("\n[INFO] Análise por IA cancelada. Os raios-X foram preservados.")
+        print("\n[INFO] Processamento por IA cancelado. Os raios-X foram preservados.")
         return []
 
-    if provider_choice == "0":
-        print("[INFO] Finalizado sem análise com IA.")
-        return []
+    if mode_choice == "1":
+        processor = review_ray_x
+        action_progress = "Analisando projeto com IA"
+        action_success = "Análise concluída"
+    else:
+        processor = document_ray_x
+        action_progress = "Gerando documentação com IA"
+        action_success = "Documentação concluída"
 
+    review_client = None
     if provider_choice == "1":
         provider = "NVIDIA NIM"
         model = NVIDIA_MODEL
-        print("\nO raio-X será enviado à NVIDIA NIM para análise.")
+        print("\nO raio-X será enviado à NVIDIA NIM para processamento.")
         key_prompt = "NVIDIA API Key: "
-        review_client = None
     else:
         provider = "OpenRouter"
         model = OPENROUTER_MODEL
@@ -230,7 +254,7 @@ def run_ai_reviews(
     try:
         api_key = key_reader(key_prompt).strip()
     except (EOFError, KeyboardInterrupt):
-        print("\n[INFO] Análise por IA cancelada. Os raios-X foram preservados.")
+        print("\n[INFO] Processamento por IA cancelado. Os raios-X foram preservados.")
         return []
     if not api_key:
         print(f"[ERRO] A API Key do {provider} não foi informada. A etapa de IA foi encerrada.")
@@ -292,23 +316,23 @@ def run_ai_reviews(
     generated: list[Path] = []
     try:
         for ray_x_file in ray_x_files:
-            print("\n[4/4] Analisando projeto com IA...")
+            print(f"\n[4/4] {action_progress}...")
             try:
                 review_options = {"provider": provider, "model": model}
                 if review_client is not None:
                     review_options["client"] = review_client
-                destination = review_ray_x(ray_x_file, api_key, **review_options)
+                destination = processor(ray_x_file, api_key, **review_options)
             except (NvidiaClientError, OpenRouterClientError, ReviewOutputError) as exc:
-                print("[AVISO] Não foi possível concluir a análise com IA.")
+                print("[AVISO] Não foi possível concluir o processamento com IA.")
                 print(f"Causa: {exc}")
                 print(f"Raio-X preservado em: {ray_x_file}")
                 return generated
             except OSError:
-                print("[AVISO] Não foi possível gravar a análise produzida pela IA.")
+                print("[AVISO] Não foi possível gravar o arquivo produzido pela IA.")
                 print(f"Raio-X preservado em: {ray_x_file}")
                 return generated
             generated.append(destination)
-            print("[OK] Análise concluída.")
+            print(f"[OK] {action_success}.")
             print(f"Arquivo: {destination}")
     finally:
         del api_key

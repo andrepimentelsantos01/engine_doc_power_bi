@@ -12,7 +12,7 @@ from .openrouter_client import (
     list_free_models,
     request_review as request_openrouter_review,
 )
-from .reviewer import ReviewOutputError, review_ray_x
+from .reviewer import ReviewOutputError, document_ray_x, review_ray_x
 
 __all__ = [
     "NVIDIA_MODEL",
@@ -24,5 +24,6 @@ __all__ = [
     "list_free_models",
     "request_openrouter_review",
     "ReviewOutputError",
+    "document_ray_x",
     "review_ray_x",
 ]

@@ -108,8 +108,8 @@ fechar a prévia.
 
 ## Exemplo
 
-O repositório inclui o projeto fictício `VendasDemo`. Ele não fica em `input/`
-para evitar processamento automático.
+O repositório inclui o projeto de demonstração `projeto_dashboard_ecomerce`.
+Ele não fica em `input/` para evitar processamento automático.
 
 Execute diretamente:
 
@@ -120,11 +120,8 @@ python main.py --input examples --output output-demo --skip-ai
 O raio-X será criado em:
 
 ```text
-output-demo/vendas_demo/VendasDemo_raio_x.txt
+output-demo/projetodashBI/projeto_dashboard_ecomerce_raio_x.txt
 ```
-
-Consulte [examples/vendas_demo/README.md](examples/vendas_demo/README.md) para
-ver o conteúdo e outra forma de execução.
 
 ## Saída
 
@@ -133,7 +130,8 @@ Cada projeto recebe uma pasta própria:
 ```text
 output/projeto_financeiro/
 ├── Financeiro_raio_x.txt
-├── Financeiro_raio_x_analise_ia.txt  # somente quando a IA é utilizada
+├── Financeiro_raio_x_analise_ia.txt  # análise crítica opcional
+├── Financeiro_documentacao_ia.txt    # documentação opcional
 ├── README.md
 ├── dependencies.md
 ├── lineage.mmd
@@ -163,12 +161,26 @@ Projetos e documentos gerados podem conter metadados sensíveis. Por isso,
 
 ## Análise com IA
 
-A IA é opcional e só é oferecida depois da criação de todos os raios-X:
+A IA é opcional e só é oferecida depois da criação de todos os raios-X.
+Primeiro, escolha o tipo de entrega:
+
+```text
+[1] Análise crítica
+[2] Documentação executiva/técnica
+[0] Finalizar sem IA
+```
+
+A análise crítica avalia evidências, dependências e pontos que merecem
+atenção. A documentação descreve arquitetura, fontes, modelo, medidas,
+páginas, visuais e lineage sem atuar como auditoria. As duas opções usam
+somente o TXT final do raio-X.
+
+Depois, escolha o provedor:
 
 ```text
 [1] NVIDIA NIM
 [2] OpenRouter
-[0] Finalizar sem IA
+[0] Voltar
 ```
 
 Na NVIDIA NIM, o modelo configurado é exibido antes da análise.
@@ -178,7 +190,8 @@ de texto com preços confirmados como zero são apresentados. A opção automát
 usa `openrouter/free`. A gratuidade é validada novamente antes de cada envio.
 Se ela não puder ser confirmada, nenhuma análise é solicitada.
 
-Uma falha de IA não apaga nem invalida o raio-X local.
+Uma falha de IA não apaga nem invalida o raio-X local, a análise crítica
+existente ou a documentação gerada anteriormente.
 
 ## Privacidade
 

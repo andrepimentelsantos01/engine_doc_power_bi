@@ -23,10 +23,17 @@ from engine_doc.ai.openrouter_client import (
     OPENROUTER_ENDPOINT,
     OPENROUTER_MODEL,
     OpenRouterClientError,
+    OpenRouterModel,
     list_free_models,
     request_review as request_openrouter_review,
 )
-from engine_doc.ai.reviewer import ReviewOutputError, analysis_path, review_ray_x
+from engine_doc.ai.reviewer import (
+    ReviewOutputError,
+    analysis_path,
+    document_ray_x,
+    documentation_path,
+    review_ray_x,
+)
 from engine_doc.cli import run_ai_reviews
 from engine_doc.models import PBIPProject
 
@@ -62,6 +69,64 @@ REVISAR os objetos sem consumo identificado antes de decidir qualquer remoção.
 CONCLUSÃO
 O projeto deve ser validado no Power BI antes de receber alterações estruturais.
 Recomendação produzida com base exclusiva no raio-X fornecido."""
+
+VALID_DOCUMENTATION = """VISÃO EXECUTIVA
+O projeto contém um modelo semântico e uma camada de relatório descritos pelos
+artefatos técnicos presentes no raio-X.
+
+OBJETIVO E ESCOPO
+Com base nos objetos identificados, o projeto organiza informações de vendas.
+O objetivo de negócio formal não foi identificado no raio-X.
+
+ARQUITETURA DO PROJETO
+A estrutura inclui o projeto PBIP, seu modelo semântico e páginas de relatório.
+
+FONTES DE DADOS
+A origem registrada no raio-X alimenta a tabela Vendas. Detalhes operacionais
+adicionais não foram identificados no raio-X.
+
+MODELO SEMÂNTICO
+O modelo apresenta a tabela Vendas, suas colunas e medidas documentadas.
+
+MEDIDAS E INDICADORES
+Faturamento Total pertence à tabela Vendas, usa a expressão DAX registrada no
+raio-X e depende das colunas Quantidade e Preco Unitario.
+
+COLUNAS CALCULADAS E DERIVAÇÕES
+Não identificado no raio-X.
+
+RELACIONAMENTOS
+Os relacionamentos são descritos pelas tabelas, colunas, cardinalidade, estado
+e direção de filtro informados nos metadados.
+
+PÁGINAS DO RELATÓRIO
+A página Resumo reúne os indicadores e visuais associados aos campos
+explicitamente encontrados no raio-X.
+
+COMPOSIÇÃO VISUAL
+Os visuais encontrados apresentam medidas e dimensões do modelo semântico.
+
+FILTROS E NAVEGAÇÃO ANALÍTICA
+Os filtros identificados estão vinculados aos campos descritos no raio-X.
+
+DEPENDÊNCIAS PRINCIPAIS
+Vendas[Quantidade] -> Vendas[Faturamento Total] -> Resumo/GraficoFaturamento.
+
+LINEAGE
+A sequência documentada conecta a origem, a tabela, a medida, o visual e a página.
+
+MAPA DE IMPACTO PARA MANUTENÇÃO
+O visual depende da medida e a medida depende das colunas registradas acima.
+
+RESUMO TÉCNICO
+O projeto combina modelo semântico, cálculos DAX, relacionamentos e relatório.
+
+INFORMAÇÕES NÃO IDENTIFICADAS
+Responsáveis, SLA e frequência de atualização não foram identificados no raio-X.
+
+Esta documentação foi gerada a partir dos artefatos técnicos disponíveis no
+projeto PBIP. Informações de negócio ou operação não representadas no modelo
+devem ser complementadas pelos responsáveis pelo projeto."""
 
 
 class NvidiaClientTests(unittest.TestCase):
@@ -202,6 +267,55 @@ class ReviewerTests(unittest.TestCase):
 
             self.assertFalse(analysis_path(ray_x).exists())
 
+    def test_documentation_uses_own_prompt_file_and_preserves_other_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ray_x = Path(temp_dir) / "modelo_raio_x.txt"
+            original = "RAIO-X COMPLETO\nMedida: Receita"
+            ray_x.write_text(original, encoding="utf-8")
+            critical = analysis_path(ray_x)
+            critical.write_text("análise crítica existente", encoding="utf-8")
+            captured: dict[str, str] = {}
+
+            def client(api_key: str, system: str, user: str) -> str:
+                captured.update(api_key=api_key, system=system, user=user)
+                return VALID_DOCUMENTATION
+
+            generated = document_ray_x(ray_x, "segredo", client=client)
+
+            self.assertEqual(documentation_path(ray_x), generated)
+            self.assertEqual("modelo_documentacao_ia.txt", generated.name)
+            self.assertEqual(original, ray_x.read_text(encoding="utf-8"))
+            self.assertEqual(
+                "análise crítica existente", critical.read_text(encoding="utf-8")
+            )
+            self.assertIn("documentação executiva e técnica", captured["system"])
+            self.assertNotIn("PONTOS QUE MERECEM ATENÇÃO", captured["system"])
+            self.assertIn(original, captured["user"])
+            result = generated.read_text(encoding="utf-8")
+            self.assertIn("DOCUMENTAÇÃO EXECUTIVA E TÉCNICA POR IA", result)
+            self.assertNotIn("segredo", result)
+
+    def test_documentation_failure_preserves_existing_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ray_x = Path(temp_dir) / "modelo_raio_x.txt"
+            ray_x.write_text("raio-x preservado", encoding="utf-8")
+            destination = documentation_path(ray_x)
+            destination.write_text("documentação anterior", encoding="utf-8")
+            critical = analysis_path(ray_x)
+            critical.write_text("análise anterior", encoding="utf-8")
+
+            def failing_client(api_key: str, system: str, user: str) -> str:
+                raise NvidiaClientError("falha controlada")
+
+            with self.assertRaises(NvidiaClientError):
+                document_ray_x(ray_x, "segredo", client=failing_client)
+
+            self.assertEqual("raio-x preservado", ray_x.read_text(encoding="utf-8"))
+            self.assertEqual(
+                "documentação anterior", destination.read_text(encoding="utf-8")
+            )
+            self.assertEqual("análise anterior", critical.read_text(encoding="utf-8"))
+
     def test_cli_requests_key_only_after_xray_exists(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             target = Path(temp_dir)
@@ -262,6 +376,81 @@ class ReviewerTests(unittest.TestCase):
             self.assertEqual([], generated)
             key_reader.assert_not_called()
             review.assert_not_called()
+
+    def test_back_from_provider_returns_to_mode_menu_without_requesting_key(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir)
+            project = PBIPProject(name="Projeto", root=target)
+            ray_x = target / "Projeto_raio_x.txt"
+            ray_x.write_text("raio-x pronto", encoding="utf-8")
+            choices = iter(["2", "0", "0"])
+            key_reader = Mock()
+
+            generated = run_ai_reviews(
+                [(project, target)],
+                key_reader=key_reader,
+                input_reader=lambda _: next(choices),
+            )
+
+            self.assertEqual([], generated)
+            key_reader.assert_not_called()
+
+    def test_cli_generates_documentation_with_nvidia(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir)
+            project = PBIPProject(name="Projeto", root=target)
+            ray_x = target / "Projeto_raio_x.txt"
+            ray_x.write_text("raio-x pronto", encoding="utf-8")
+            choices = iter(["2", "1"])
+
+            def fake_document(path: Path, key: str, **options: object) -> Path:
+                self.assertEqual("segredo", key)
+                self.assertEqual("NVIDIA NIM", options["provider"])
+                destination = documentation_path(path)
+                destination.write_text("documentação", encoding="utf-8")
+                return destination
+
+            with patch("engine_doc.cli.document_ray_x", side_effect=fake_document):
+                generated = run_ai_reviews(
+                    [(project, target)],
+                    key_reader=lambda _: "segredo",
+                    input_reader=lambda _: next(choices),
+                )
+
+            self.assertEqual([documentation_path(ray_x)], generated)
+
+    def test_cli_generates_documentation_with_openrouter_free_router(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir)
+            project = PBIPProject(name="Projeto", root=target)
+            ray_x = target / "Projeto_raio_x.txt"
+            ray_x.write_text("raio-x pronto", encoding="utf-8")
+            choices = iter(["2", "2", "A"])
+            free_router = OpenRouterModel(
+                id=OPENROUTER_MODEL,
+                name="OpenRouter Free Router",
+                context_length=131072,
+            )
+
+            def fake_document(path: Path, key: str, **options: object) -> Path:
+                self.assertEqual("OpenRouter", options["provider"])
+                self.assertEqual(OPENROUTER_MODEL, options["model"])
+                self.assertIn("client", options)
+                destination = documentation_path(path)
+                destination.write_text("documentação", encoding="utf-8")
+                return destination
+
+            with (
+                patch("engine_doc.cli.list_free_models", return_value=[free_router]),
+                patch("engine_doc.cli.document_ray_x", side_effect=fake_document),
+            ):
+                generated = run_ai_reviews(
+                    [(project, target)],
+                    key_reader=lambda _: "segredo",
+                    input_reader=lambda _: next(choices),
+                )
+
+            self.assertEqual([documentation_path(ray_x)], generated)
 
 
 class OpenRouterClientTests(unittest.TestCase):

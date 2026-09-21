@@ -236,14 +236,14 @@ class EngineDocTests(unittest.TestCase):
             self.assertTrue(any(page.visuals for page in report.pages))
 
     def test_example_project_is_analyzable(self) -> None:
-        example_root = ROOT / "examples" / "vendas_demo"
+        example_root = ROOT / "examples" / "projetodashBI"
         projects = discover_projects(example_root)
         self.assertEqual(1, len(projects))
         project = projects[0]
         model = parse_semantic_model(project.semantic_model_path)
         report = parse_report(project.report_path)
         self.assertEqual(3, len(model.tables))
-        self.assertEqual(2, len(report.pages))
+        self.assertEqual(5, len(report.pages))
         self.assertGreater(sum(page.visual_count for page in report.pages), 0)
 
 
